@@ -91,7 +91,7 @@ The application includes a **hands-free multilingual voice assistant** that allo
 | Authentication | JWT, bcryptjs |
 | Computer Vision | MediaPipe, OpenCV |
 | AI Processing | Python, Flask, rembg |
-| Voice Assistant | Web Speech API, Ollama |
+| Voice Assistant | Web Speech API, Ollama (Mistral)|
 
 ---
 
