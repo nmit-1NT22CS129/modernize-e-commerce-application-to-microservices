@@ -1,152 +1,159 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { ShopContext } from '../context/ShopContext'
-import { assets } from '../assets/assets';
-import Title from '../components/Title';
-import ProductItem from '../components/ProductItem';
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ShopContext } from "../context/ShopContext";
+import { assets } from "../assets/assets";
+import Title from "../components/Title";
+import ProductItem from "../components/ProductItem";
+import { useLocation, useNavigate } from "react-router-dom";
+import { onVoiceCommand } from "../utils/voiceBus";
 
 const Collection = () => {
+  const { products, search, showSearch } = useContext(ShopContext);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const productRefs = useRef([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [showFilter, setShowFilter] = useState(false);
 
-  const { products , search , showSearch } = useContext(ShopContext);
-  const [showFilter,setShowFilter] = useState(false);
-  const [filterProducts,setFilterProducts] = useState([]);
-  const [category,setCategory] = useState([]);
-  const [subCategory,setSubCategory] = useState([]);
-  const [sortType,setSortType] = useState('relavent')
+  /* ================= URL PARAMS ================= */
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
-  const toggleCategory = (e) => {
+  const category = query.get("category");          // men | women | kids | null
+  const subCategory = query.get("subCategory");    // topwear | bottomwear | winterwear | null
+  const price_lte = query.get("price_lte");
+  const price_gte = query.get("price_gte");
+  const sort = query.get("sort");                  // low-high | high-low
 
-    if (category.includes(e.target.value)) {
-        setCategory(prev=> prev.filter(item => item !== e.target.value))
+  /* ================= APPLY FILTERS ================= */
+  useEffect(() => {
+    let list = [...products];
+
+    if (category) {
+      list = list.filter(p => p.category.toLowerCase() === category.toLowerCase());
     }
-    else{
-      setCategory(prev => [...prev,e.target.value])
+
+    if (subCategory) {
+      list = list.filter(p => p.subCategory.toLowerCase() === subCategory.toLowerCase());
     }
 
-  }
-
-  const toggleSubCategory = (e) => {
-
-    if (subCategory.includes(e.target.value)) {
-      setSubCategory(prev=> prev.filter(item => item !== e.target.value))
+    if (price_lte) {
+      list = list.filter(p => p.price <= Number(price_lte));
     }
-    else{
-      setSubCategory(prev => [...prev,e.target.value])
+
+    if (price_gte) {
+      list = list.filter(p => p.price >= Number(price_gte));
     }
-  }
-
-  const applyFilter = () => {
-
-    let productsCopy = products.slice();
 
     if (showSearch && search) {
-      productsCopy = productsCopy.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase())
+      );
     }
 
-    if (category.length > 0) {
-      productsCopy = productsCopy.filter(item => category.includes(item.category));
-    }
+    if (sort === "low-high") list.sort((a, b) => a.price - b.price);
+    if (sort === "high-low") list.sort((a, b) => b.price - a.price);
 
-    if (subCategory.length > 0 ) {
-      productsCopy = productsCopy.filter(item => subCategory.includes(item.subCategory))
-    }
+    setFilteredProducts(list);
+  }, [products, search, showSearch, location.search]);
 
-    setFilterProducts(productsCopy)
+  /* ================= URL UPDATE HELPERS ================= */
+  const updateParam = (key, value) => {
+    const params = new URLSearchParams(location.search);
+    value ? params.set(key, value) : params.delete(key);
+    navigate(`/collection?${params.toString()}`, { replace: true });
+  };
 
-  }
+  /* ================= VOICE LIST CONTROL ================= */
+  useEffect(() => {
+    const unsubscribe = onVoiceCommand(cmd => {
+      cmd = cmd.toLowerCase();
 
-  const sortProduct = () => {
+      if (cmd.includes("scroll down")) {
+        window.scrollBy({ top: 400, behavior: "smooth" });
+        return;
+      }
 
-    let fpCopy = filterProducts.slice();
+      if (cmd.includes("scroll up")) {
+        window.scrollBy({ top: -400, behavior: "smooth" });
+        return;
+      }
 
-    switch (sortType) {
-      case 'low-high':
-        setFilterProducts(fpCopy.sort((a,b)=>(a.price - b.price)));
-        break;
+      const openMatch = cmd.match(/open product (\d+)/);
+      if (openMatch) {
+        const idx = Number(openMatch[1]) - 1;
+        productRefs.current[idx]?.querySelector("a")?.click();
+      }
+    });
 
-      case 'high-low':
-        setFilterProducts(fpCopy.sort((a,b)=>(b.price - a.price)));
-        break;
+    return unsubscribe;
+  }, []);
 
-      default:
-        applyFilter();
-        break;
-    }
-
-  }
-
-  useEffect(()=>{
-      applyFilter();
-  },[category,subCategory,search,showSearch,products])
-
-  useEffect(()=>{
-    sortProduct();
-  },[sortType])
-
+  /* ================= RENDER ================= */
   return (
-    <div className='flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t'>
-      
-      {/* Filter Options */}
-      <div className='min-w-60'>
-        <p onClick={()=>setShowFilter(!showFilter)} className='my-2 text-xl flex items-center cursor-pointer gap-2'>FILTERS
-          <img className={`h-3 sm:hidden ${showFilter ? 'rotate-90' : ''}`} src={assets.dropdown_icon} alt="" />
+    <div className="flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t">
+
+      {/* FILTERS */}
+      <div className="min-w-60">
+        <p onClick={() => setShowFilter(!showFilter)}
+          className="my-2 text-xl flex items-center cursor-pointer gap-2">
+          FILTERS
+          <img className={`h-3 sm:hidden ${showFilter ? "rotate-90" : ""}`}
+            src={assets.dropdown_icon} alt="" />
         </p>
-        {/* Category Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 mt-6 ${showFilter ? '' :'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>CATEGORIES</p>
-          <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Men'} onChange={toggleCategory}/> Men
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Women'} onChange={toggleCategory}/> Women
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Kids'} onChange={toggleCategory}/> kids
-            </p>
-          </div>
+
+        {/* CATEGORY */}
+        <div className={`border pl-5 py-3 mt-6 ${showFilter ? "" : "hidden"} sm:block`}>
+          <p className="mb-3 text-sm font-medium">CATEGORIES</p>
+          {["men", "women", "kids"].map(c => (
+            <label key={c} className="flex gap-2 text-sm">
+              <input
+                type="radio"
+                checked={category === c}
+                onChange={() => updateParam("category", c)}
+              /> {c}
+            </label>
+          ))}
         </div>
-        {/* SubCategory Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' :'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>TYPE</p>
-          <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Topwear'} onChange={toggleSubCategory}/> Topwear
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Bottomwear'} onChange={toggleSubCategory}/> Bottomwear
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Winterwear'} onChange={toggleSubCategory}/> Winterwear
-            </p>
-          </div>
+
+        {/* SUBCATEGORY */}
+        <div className={`border pl-5 py-3 my-5 ${showFilter ? "" : "hidden"} sm:block`}>
+          <p className="mb-3 text-sm font-medium">TYPE</p>
+          {["topwear", "bottomwear", "winterwear"].map(s => (
+            <label key={s} className="flex gap-2 text-sm">
+              <input
+                type="radio"
+                checked={subCategory === s}
+                onChange={() => updateParam("subCategory", s)}
+              /> {s}
+            </label>
+          ))}
         </div>
       </div>
 
-      {/* Right Side */}
-      <div className='flex-1'>
-
-        <div className='flex justify-between text-base sm:text-2xl mb-4'>
-            <Title text1={'ALL'} text2={'COLLECTIONS'} />
-            {/* Porduct Sort */}
-            <select onChange={(e)=>setSortType(e.target.value)} className='border-2 border-gray-300 text-sm px-2'>
-              <option value="relavent">Sort by: Relavent</option>
-              <option value="low-high">Sort by: Low to High</option>
-              <option value="high-low">Sort by: High to Low</option>
-            </select>
+      {/* PRODUCTS */}
+      <div className="flex-1">
+        <div className="flex justify-between mb-4">
+          <Title text1="ALL" text2="COLLECTIONS" />
+          <select
+            value={sort || "relavent"}
+            onChange={e => updateParam("sort", e.target.value === "relavent" ? null : e.target.value)}
+            className="border px-2"
+          >
+            <option value="relavent">Sort by: Relevant</option>
+            <option value="low-high">Low to High</option>
+            <option value="high-low">High to Low</option>
+          </select>
         </div>
 
-        {/* Map Products */}
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
-          {
-            filterProducts.map((item,index)=>(
-              <ProductItem key={index} name={item.name} id={item._id} price={item.price} image={item.image} />
-            ))
-          }
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredProducts.map((item, i) => (
+            <div key={item._id} ref={el => productRefs.current[i] = el}>
+              <ProductItem {...item} />
+            </div>
+          ))}
         </div>
       </div>
-
     </div>
-  )
-}
+  );
+};
 
-export default Collection
+export default Collection;
