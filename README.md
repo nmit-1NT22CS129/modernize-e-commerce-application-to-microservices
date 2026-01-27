@@ -1,4 +1,3 @@
-# AI-Driven E-commerce Website
 
 ## Overview
 
