@@ -35,60 +35,88 @@ const VoiceAssistantIcon = () => {
   };
 
   const handleCommand = async (text) => {
-    const res = await fetch("http://localhost:4000/api/llm-chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userText: text }),
-    });
+    console.log("USER SAID:", text);
 
-    const data = await res.json();
-    if (!data.success) return;
+    try {
+      const res = await fetch("http://localhost:4000/api/llm-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userText: text }),
+      });
 
-    const cmd = data.response;
+      const data = await res.json();
+      if (!data.success) {
+        speak("AI error");
+        return;
+      }
 
-    /* NAVIGATION */
-    if (cmd.action === "navigate" && cmd.navigateTo) {
-      navigate(cmd.navigateTo);
-      speak("Navigating");
-      return;
+      const cmd = data.response;
+      console.log("AI RESPONSE:", cmd);
+
+      // 🔹 NAVIGATION
+      if (cmd.action === "navigate" && cmd.navigateTo) {
+        navigate(cmd.navigateTo);
+        speak("Navigating");
+        return;
+      }
+
+      if (cmd.action === "browser_back") {
+        window.history.back();
+        return;
+      }
+
+      if (cmd.action === "browser_forward") {
+        window.history.forward();
+        return;
+      }
+
+      if (cmd.action === "checkout") {
+      navigate("/place-order");
+       return;
+      }
+
+if (cmd.action === "filter") {
+  navigate(`/collection?category=${cmd.filters.category?.toLowerCase()}`);
+  return;
+}
+
+
+      // 🔹 SORT
+      if (cmd.action === "sort" && cmd.sort) {
+        navigate(`/collection?sort=${cmd.sort}`);
+        speak("Sorting products");
+        return;
+      }
+
+      // 🔹 FILTER / SEARCH
+      const params = new URLSearchParams();
+      const f = cmd.filters || {};
+
+      if (f.category) params.set("category", f.category.toLowerCase());
+      if (f.subCategory) params.set("subCategory", f.subCategory.toLowerCase());
+      if (f.price_lte) params.set("price_lte", f.price_lte);
+      if (f.price_gte) params.set("price_gte", f.price_gte);
+      if (cmd.search) params.set("search", cmd.search);
+
+      // ✅ Only navigate if we have filters/search
+      if (params.toString()) {
+        navigate(`/collection?${params.toString()}`);
+        speak("Here are the results");
+      } else {
+        // 🔥 Fallback — treat speech as search
+        navigate(`/collection?search=${encodeURIComponent(text)}`);
+        speak("Showing search results");
+      }
+
+    } catch (err) {
+      console.error("VOICE ERROR:", err);
+      speak("Something went wrong");
     }
-
-    if (cmd.action === "browser_back") {
-      history.back();
-      return;
-    }
-
-    if (cmd.action === "browser_forward") {
-      history.forward();
-      return;
-    }
-
-    /* SORT */
-    if (cmd.action === "sort" && cmd.sort) {
-      navigate(`/collection?sort=${cmd.sort}`);
-      speak("Sorting");
-      return;
-    }
-
-    /* FILTER / SEARCH → URL ONLY */
-    const params = new URLSearchParams();
-
-    const f = cmd.filters || {};
-
-    if (f.category) params.set("category", f.category.toLowerCase());
-    if (f.subCategory) params.set("subCategory", f.subCategory.toLowerCase());
-    if (f.price_lte) params.set("price_lte", f.price_lte);
-    if (f.price_gte) params.set("price_gte", f.price_gte);
-
-    if (cmd.search) params.set("search", cmd.search);
-
-    navigate(`/collection?${params.toString()}`);
-    speak("Here are the results");
   };
 
   return (
-    <span onClick={() => recognition?.start()}>
-      {listening ? <FaMicrophone /> : <FaMicrophoneSlash />}
+    <span onClick={() => recognition?.start()} style={{ cursor: "pointer" }}>
+      {listening ? <FaMicrophone size={24} /> : <FaMicrophoneSlash size={24} />}
     </span>
   );
 };
