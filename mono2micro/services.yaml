@@ -1,0 +1,22 @@
+services:
+  user:
+    routeFile: userRoute.js
+    controllerFile: userController.js
+    modelFiles:
+      - userModel.js
+
+  product:
+    routeFile: productRoute.js
+    controllerFile: productController.js
+    modelFiles:
+      - productModel.js
+
+  order:
+    routeFile: orderRoute.js
+    controllerFile: orderController.js
+    modelFiles:
+      - orderModel.js
+
+  cart:
+    routeFile: cartRoute.js
+    controllerFile: cartController.js

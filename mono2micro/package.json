@@ -1,0 +1,25 @@
+{
+  "name": "mono2micro",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "mono2micro": "./index.js"
+  },
+  "scripts": {
+     "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@babel/parser": "^7.28.6",
+    "@babel/traverse": "^7.28.6",
+    "commander": "^14.0.2",
+    "fs-extra": "^11.3.3",
+    "globby": "^16.1.0",
+    "yaml": "^2.8.2"
+  }
+}
